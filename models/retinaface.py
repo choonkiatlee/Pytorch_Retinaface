@@ -189,7 +189,7 @@ class RetinaFaceModified(nn.Module):
         :param cfg:  Network related settings.
         :param phase: train or test.
         """
-        super(RetinaFace,self).__init__()
+        super(RetinaFaceModified,self).__init__()
         self.phase = phase
         # backbone = None
         # if cfg['name'] == 'mobilenet0.25':
