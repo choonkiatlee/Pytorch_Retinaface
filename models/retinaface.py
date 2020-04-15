@@ -264,11 +264,11 @@ class RetinaFaceModified(nn.Module):
         classifications = torch.cat([selected_class_head(feature) for selected_class_head, feature in zip(self.ClassHead, features)],dim=1)
         ldm_regressions = torch.cat([selected_landmark_head(feature) for selected_landmark_head, feature in zip(self.LandmarkHead, features)], dim=1)
 
-        if self.calculate_prior_boxes:
-            print(torch.tensor(inputs.shape[2:4]).float())
-            prior_boxes = self._prior_box(torch.tensor(inputs.shape[2:4]).float(), self.min_sizes_list, self.steps, self.clip)
-        else:
-            prior_boxes = torch.tensor(False)
+        # if self.calculate_prior_boxes:
+        #     print(torch.tensor(inputs.shape[2:4]).float())
+        prior_boxes = self._prior_box(torch.tensor(inputs.shape[2:4]).float(), self.min_sizes_list, self.steps, self.clip)
+        # else:
+        #     prior_boxes = torch.tensor(False)
 
         if self.phase == 'train':
             output = (bbox_regressions, classifications, ldm_regressions, prior_boxes)
