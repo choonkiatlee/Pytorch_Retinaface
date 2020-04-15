@@ -334,7 +334,7 @@ class RetinaFaceModified(nn.Module):
         image_size = self.image_size if self.image_size else tuple(inputs.shape[2:4])
 
         if self.calculate_prior_boxes and (self.image_size is None):
-            prior_boxes = self._prior_box(torch.tensor().float(), self.min_sizes_list, self.steps, self.clip)
+            prior_boxes = self._prior_box(torch.tensor(image_size).float(), self.min_sizes_list, self.steps, self.clip)
         else:
             prior_boxes = self.prior_boxes
 
