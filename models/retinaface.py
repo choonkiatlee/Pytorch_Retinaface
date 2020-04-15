@@ -282,7 +282,7 @@ class RetinaFaceModified(nn.Module):
 
         scores = conf.squeeze(0)[:,1]
         landms = decode_landm(landms.data.squeeze(0), prior_boxes, self.variances)
-        scale1 = torch.tensor(reversed_img_size).float().repeat(3)
+        scale1 = torch.tensor(reversed_img_size).float().repeat(5)
 
         landms = landms * scale1 / resize
 
