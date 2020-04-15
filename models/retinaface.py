@@ -115,32 +115,6 @@ class RetinaFace(nn.Module):
             landmarkhead.append(LandmarkHead(inchannels,anchor_num))
         return landmarkhead
 
-    # def _prior_box(self, image_size, cfg):
-
-    #     min_sizes_list = cfg['min_sizes']
-    #     steps = cfg['steps']
-    #     clip = cfg['clip']
-    #     name = "s"
-
-    #     feature_maps = [[ceil(image_size[0]/step), ceil(image_size[1]/step)] for step in steps]
-    #     anchors = []
-    #     for k, f in enumerate(feature_maps):
-    #         min_sizes = min_sizes_list[k]
-    #         for i, j in product(range(f[0]), range(f[1])):
-    #             for min_size in min_sizes:
-    #                 s_kx = min_size / image_size[1]
-    #                 s_ky = min_size / image_size[0]
-    #                 dense_cx = [x * steps[k] / image_size[1] for x in [j + 0.5]]
-    #                 dense_cy = [y * steps[k] / image_size[0] for y in [i + 0.5]]
-    #                 for cy, cx in product(dense_cy, dense_cx):
-    #                     anchors += [cx, cy, s_kx, s_ky]
-
-    #     # back to torch land
-    #     output = torch.Tensor(anchors).view(-1, 4)
-    #     if clip:
-    #         output.clamp_(max=1, min=0)
-    #     return output
-
     def forward(self,inputs):
         out = self.body(inputs)
 
@@ -151,7 +125,6 @@ class RetinaFace(nn.Module):
         feature1 = self.ssh1(fpn[0])
         feature2 = self.ssh2(fpn[1])
         feature3 = self.ssh3(fpn[2])
-        features = [feature1, feature2, feature3]
 
         bbox_regressions = torch.cat([self.BboxHead[i](feature) for i, feature in enumerate(features)], dim=1)
         classifications = torch.cat([self.ClassHead[i](feature) for i, feature in enumerate(features)],dim=1)
@@ -191,21 +164,6 @@ class RetinaFaceModified(nn.Module):
         """
         super(RetinaFaceModified,self).__init__()
         self.phase = phase
-        # backbone = None
-        # if cfg['name'] == 'mobilenet0.25':
-        #     backbone = MobileNetV1()
-        #     if cfg['pretrain']:
-        #         checkpoint = torch.load("./weights/mobilenetV1X0.25_pretrain.tar", map_location=torch.device('cpu'))
-        #         from collections import OrderedDict
-        #         new_state_dict = OrderedDict()
-        #         for k, v in checkpoint['state_dict'].items():
-        #             name = k[7:]  # remove module.
-        #             new_state_dict[name] = v
-        #         # load params
-        #         backbone.load_state_dict(new_state_dict)
-        # elif cfg['name'] == 'Resnet50':
-        #     import torchvision.models as models
-        #     backbone = models.resnet50(pretrained=cfg['pretrain'])
 
         # self.cfg = cfg
         self.calculate_prior_boxes = calculate_prior_boxes
@@ -281,11 +239,12 @@ class RetinaFaceModified(nn.Module):
         feature1 = self.ssh1(fpn[0])
         feature2 = self.ssh2(fpn[1])
         feature3 = self.ssh3(fpn[2])
-        features = [feature1, feature2, feature3]
+        features = nn.ModuleList([feature1, feature2, feature3])
 
-        bbox_regressions = torch.cat([self.BboxHead[i](feature) for i, feature in enumerate(features)], dim=1)
-        classifications = torch.cat([self.ClassHead[i](feature) for i, feature in enumerate(features)],dim=1)
-        ldm_regressions = torch.cat([self.LandmarkHead[i](feature) for i, feature in enumerate(features)], dim=1)
+
+        bbox_regressions = torch.cat([selected_bbox_head(feature) for selected_bbox_head, feature in zip(self.BboxHead, features)], dim=1)
+        classifications = torch.cat([selected_class_head(feature) for selected_class_head, feature in zip(self.ClassHead, features)],dim=1)
+        ldm_regressions = torch.cat([selected_landmark_head(feature) for selected_landmark_head, feature in zip(self.LandmarkHead, features)], dim=1)
 
         # if self.calculate_prior_boxes:
         #     prior_boxes = self._prior_box((inputs.shape[1], inputs.shape[2]), self.cfg)
