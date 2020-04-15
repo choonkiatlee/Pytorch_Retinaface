@@ -311,10 +311,6 @@ class RetinaFaceModified(nn.Module):
 
         return boxes, scores, landms
 
-
-
-
-
     def forward(self,inputs):
         out = self.body(inputs)
 
@@ -338,7 +334,7 @@ class RetinaFaceModified(nn.Module):
 
         # image_size: Tuple[int, int] = self.image_size if (self.image_size is not None) else (inputs.shape[2], inputs.shape[3])
 
-        if self.calculate_prior_boxes and (self.image_size is None):
+        if self.prior_boxes is None:
             prior_boxes = self._prior_box(torch.tensor(image_size, dtype=torch.float), self.min_sizes_list, self.steps, self.clip)
         else:
             prior_boxes = self.prior_boxes
