@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torchvision
 import torchvision.models.detection.backbone_utils as backbone_utils
 import torchvision.models._utils as _utils
 import torch.nn.functional as F
@@ -11,6 +12,8 @@ from models.net import SSH as SSH
 
 from math import ceil
 from itertools import product as product
+
+from utils.box_utils import decode, decode_landm
 
 from typing import *
 
@@ -160,7 +163,12 @@ class RetinaFaceModified(nn.Module):
         min_sizes_list: List[Tuple[int,int]] = [(16, 32), (64, 128), (256, 512)],
         steps:List[int] = [8, 16, 32],
         clip: bool = False,
-        image_size: Optional[Tuple[int, int]] = None
+        image_size: Optional[Tuple[int, int]] = None,
+
+        variances: List[float] = [0.1, 0.2],
+        resize: int = 1,
+        confidence_threshold: float = 0.02,
+        nms_threshold: float = 0.4,
         ):
         """
         :param cfg:  Network related settings.
@@ -176,6 +184,11 @@ class RetinaFaceModified(nn.Module):
         self.steps = steps
         self.clip = clip
         self.image_size = image_size
+
+        self.variances = variances
+        self.resize = resize
+        self.confidence_threshold = confidence_threshold
+        self.nms_threshold = nms_threshold
 
         if self.image_size is not None:
             self.prior_boxes = self._prior_box(torch.tensor(self.image_size).float(), self.min_sizes_list, self.steps, self.clip)
@@ -255,6 +268,53 @@ class RetinaFaceModified(nn.Module):
             output.clamp_(max=1, min=0)
         return output
 
+    def _decode(self, loc, conf, landms, priors, img_size: Tuple[int, int]):
+
+        # img_size = (img_height, img_width) = img.shape[:2]
+        
+        reversed_img_size = reversed(img_size)
+
+        # scale = torch.Tensor([img_size[1], img_size[0], img_size[1], img_size[0]])
+        scale = torch.tensor(reversed_img_size).float().repeat(2)
+
+        boxes = decode(loc.data.squeeze(0), prior_boxes, self.variances)
+        boxes = boxes * scale / self.resize
+
+        scores = conf.squeeze(0)[:,1]
+        landms = decode_landm(landms.data.squeeze(0), prior_boxes, self.variances)
+        scale1 = torch.tensor(reversed_img_size).float().repeat(3)
+
+        landms = landms * scale1 / resize
+
+        inds = torch.where(scores > self.confidence_threshold)[0]
+        boxes = boxes[inds]
+        landms = landms[inds]
+        scores = scores[inds]
+
+        # keep top-K before NMS
+        order = torch.flip(scores.argsort(), dims=(-1,))[:top_k]
+        # order = scores.argsort()[::-1][:top_k]
+        boxes = boxes[order]
+        landms = landms[order]
+        scores = scores[order]
+
+        # do NMS
+        keep = torchvision.ops.nms(boxes, scores, self.nms_threshold)
+
+        boxes = boxes[keep]
+        scores = scores[keep]
+        landms = landms[keep]
+
+        boxes = boxes[:5000]
+        scores = boxes[:5000]
+        landms = landms[:5000]
+
+        return boxes, scores, landms
+
+
+
+
+
     def forward(self,inputs):
         out = self.body(inputs)
 
@@ -270,9 +330,11 @@ class RetinaFaceModified(nn.Module):
         bbox_regressions = torch.cat([selected_bbox_head(feature) for selected_bbox_head, feature in zip(self.BboxHead, features)], dim=1)
         classifications = torch.cat([selected_class_head(feature) for selected_class_head, feature in zip(self.ClassHead, features)],dim=1)
         ldm_regressions = torch.cat([selected_landmark_head(feature) for selected_landmark_head, feature in zip(self.LandmarkHead, features)], dim=1)
+        
+        image_size = self.image_size if self.image_size else tuple(inputs.shape[2:4])
 
         if self.calculate_prior_boxes and (self.image_size is None):
-            prior_boxes = self._prior_box(torch.tensor(inputs.shape[2:4]).float(), self.min_sizes_list, self.steps, self.clip)
+            prior_boxes = self._prior_box(torch.tensor().float(), self.min_sizes_list, self.steps, self.clip)
         else:
             prior_boxes = self.prior_boxes
 
@@ -285,5 +347,13 @@ class RetinaFaceModified(nn.Module):
         #     output = (bbox_regressions, classifications, ldm_regressions)
         # else:
         #     output = (bbox_regressions, F.softmax(classifications, dim=-1), ldm_regressions)
+
+
+        boxes = bbox_regressions
+        scores = F.softmax(classifications, dim=-1)
+        landms = ldm_regressions
+
+        return self._decode(boxes, scores, landms, image_size)
+
 
         return output

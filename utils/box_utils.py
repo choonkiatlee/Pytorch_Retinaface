@@ -1,6 +1,8 @@
 import torch
 import numpy as np
 
+from typing import *
+
 
 def point_form(boxes):
     """ Convert prior_boxes to (xmin, ymin, xmax, ymax)
@@ -206,7 +208,7 @@ def encode_landm(matched, priors, variances):
 
 
 # Adapted from https://github.com/Hakuyume/chainer-ssd
-def decode(loc, priors, variances):
+def decode(loc: torch.Tensor, priors: torch.Tensor, variances: List[float]):
     """Decode locations from predictions using priors to undo
     the encoding we did for offset regression at train time.
     Args:
@@ -226,7 +228,7 @@ def decode(loc, priors, variances):
     boxes[:, 2:] += boxes[:, :2]
     return boxes
 
-def decode_landm(pre, priors, variances):
+def decode_landm(pre: torch.Tensor, priors: torch.Tensor, variances: List[float]):
     """Decode landm from predictions using priors to undo
     the encoding we did for offset regression at train time.
     Args:
