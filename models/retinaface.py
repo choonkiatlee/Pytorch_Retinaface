@@ -150,6 +150,57 @@ class RetinaFace(nn.Module):
 
         return output
 
+def decode_bbox(
+    self, 
+    loc: torch.Tensor, 
+    conf: torch.Tensor, 
+    landms: torch.Tensor, 
+    prior_boxes: torch.Tensor, 
+    img_size: Tuple[int, int],
+    variances: List[float] = [0.1, 0.2],
+    resize: int = 1,
+    confidence_threshold: float = 0.02,
+    nms_threshold: float = 0.4,
+    top_k: int = 5000,
+    keep_top_k: int = 750,
+    ):
+
+    reversed_img_size = (img_size[1], img_size[0])
+
+    scale_bbox = torch.tensor(reversed_img_size).float().repeat(2)
+    scale_lm = torch.tensor(reversed_img_size).float().repeat(5)
+
+    boxes = decode(loc.data.squeeze(0), prior_boxes, variances)
+    boxes = boxes * scale_bbox / resize
+
+    scores = conf.squeeze(0)[:,1]
+    landms = decode_landm(landms.data.squeeze(0), prior_boxes, variances)
+    landms = landms * scale_lm / resize
+
+    inds = torch.where(scores > confidence_threshold)[0]
+    boxes = boxes[inds]
+    landms = landms[inds]
+    scores = scores[inds]
+
+    # keep top-K before NMS
+    order = torch.flip(scores.argsort(), dims=(-1,))[:top_k] # top_k = 5000
+    boxes = boxes[order]
+    landms = landms[order]
+    scores = scores[order]
+
+    # do NMS
+    keep = torchvision.ops.nms(boxes, scores, nms_threshold)
+
+    boxes = boxes[keep]
+    scores = scores[keep]
+    landms = landms[keep]
+
+    boxes = boxes[:keep_top_k]   # keep_top_k = 750
+    scores = scores[:keep_top_k]  # keep_top_k = 750
+    landms = landms[:keep_top_k] # keep_top_k = 750
+
+    return boxes, scores, landms
+
 
 class RetinaFaceModified(nn.Module):
     def __init__(self, 
@@ -272,49 +323,6 @@ class RetinaFaceModified(nn.Module):
             output.clamp_(max=1, min=0)
         return output
 
-    def _decode(self, loc, conf, landms, prior_boxes, img_size: Tuple[int, int]):
-
-        # img_size = (img_height, img_width) = img.shape[:2]
-        
-        reversed_img_size = (img_size[1], img_size[0])
-
-        # scale = torch.Tensor([img_size[1], img_size[0], img_size[1], img_size[0]])
-        scale = torch.tensor(reversed_img_size).float().repeat(2)
-
-        boxes = decode(loc.data.squeeze(0), prior_boxes, self.variances)
-        boxes = boxes * scale / self.resize
-
-        scores = conf.squeeze(0)[:,1]
-        landms = decode_landm(landms.data.squeeze(0), prior_boxes, self.variances)
-        scale1 = torch.tensor(reversed_img_size).float().repeat(5)
-
-        landms = landms * scale1 / self.resize
-
-        inds = torch.where(scores > self.confidence_threshold)[0]
-        boxes = boxes[inds]
-        landms = landms[inds]
-        scores = scores[inds]
-
-        # keep top-K before NMS
-        order = torch.flip(scores.argsort(), dims=(-1,))[:5000] # top_k = 5000
-        # order = scores.argsort()[::-1][:top_k]
-        boxes = boxes[order]
-        landms = landms[order]
-        scores = scores[order]
-
-        # do NMS
-        keep = torchvision.ops.nms(boxes, scores, self.nms_threshold)
-
-        boxes = boxes[keep]
-        scores = scores[keep]
-        landms = landms[keep]
-
-        boxes = boxes[:750]   # keep_top_k = 750
-        scores = scores[:750]  # keep_top_k = 750
-        landms = landms[:750] # keep_top_k = 750
-
-        return boxes, scores, landms
-
     def forward(self,inputs):
         out = self.body(inputs)
 
@@ -346,7 +354,17 @@ class RetinaFaceModified(nn.Module):
             else:
                 prior_boxes = self.prior_boxes
 
-            output = self._decode(boxes, scores, landms, prior_boxes, image_size)
+            output = decode_bbox(
+                boxes, 
+                scores, 
+                landms, 
+                prior_boxes, 
+                image_size,
+                self.variances, 
+                self.resize,
+                self.confidence_threshold, 
+                self.nms_threshold
+                )
 
         else:
             
@@ -356,6 +374,3 @@ class RetinaFaceModified(nn.Module):
                 output = (boxes, scores, landms)
 
         return output
-
-
-        # return output
