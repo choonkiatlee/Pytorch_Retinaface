@@ -48,31 +48,29 @@ class LandmarkHead(nn.Module):
 
         return out.view(out.shape[0], -1, 10)
 
-
-
 class RetinaFace(nn.Module):
-    def __init__(self, cfg = None, phase = 'train', calculate_prior_boxes = False):
+    def __init__(self, cfg = None, phase = 'train', calculate_prior_boxes = False, backbone = None):
         """
         :param cfg:  Network related settings.
         :param phase: train or test.
         """
         super(RetinaFace,self).__init__()
         self.phase = phase
-        backbone = None
-        if cfg['name'] == 'mobilenet0.25':
-            backbone = MobileNetV1()
-            if cfg['pretrain']:
-                checkpoint = torch.load("./weights/mobilenetV1X0.25_pretrain.tar", map_location=torch.device('cpu'))
-                from collections import OrderedDict
-                new_state_dict = OrderedDict()
-                for k, v in checkpoint['state_dict'].items():
-                    name = k[7:]  # remove module.
-                    new_state_dict[name] = v
-                # load params
-                backbone.load_state_dict(new_state_dict)
-        elif cfg['name'] == 'Resnet50':
-            import torchvision.models as models
-            backbone = models.resnet50(pretrained=cfg['pretrain'])
+        # backbone = None
+        # if cfg['name'] == 'mobilenet0.25':
+        #     backbone = MobileNetV1()
+        #     if cfg['pretrain']:
+        #         checkpoint = torch.load("./weights/mobilenetV1X0.25_pretrain.tar", map_location=torch.device('cpu'))
+        #         from collections import OrderedDict
+        #         new_state_dict = OrderedDict()
+        #         for k, v in checkpoint['state_dict'].items():
+        #             name = k[7:]  # remove module.
+        #             new_state_dict[name] = v
+        #         # load params
+        #         backbone.load_state_dict(new_state_dict)
+        # elif cfg['name'] == 'Resnet50':
+        #     import torchvision.models as models
+        #     backbone = models.resnet50(pretrained=cfg['pretrain'])
 
         self.cfg = cfg
         self.calculate_prior_boxes = calculate_prior_boxes
@@ -112,32 +110,31 @@ class RetinaFace(nn.Module):
             landmarkhead.append(LandmarkHead(inchannels,anchor_num))
         return landmarkhead
 
-    def _prior_box(self, image_size, cfg):
+    # def _prior_box(self, image_size, cfg):
 
-        min_sizes_list = cfg['min_sizes']
-        steps = cfg['steps']
-        clip = cfg['clip']
-        name = "s"
+    #     min_sizes_list = cfg['min_sizes']
+    #     steps = cfg['steps']
+    #     clip = cfg['clip']
+    #     name = "s"
 
-        feature_maps = [[ceil(image_size[0]/step), ceil(image_size[1]/step)] for step in steps]
+    #     feature_maps = [[ceil(image_size[0]/step), ceil(image_size[1]/step)] for step in steps]
+    #     anchors = []
+    #     for k, f in enumerate(feature_maps):
+    #         min_sizes = min_sizes_list[k]
+    #         for i, j in product(range(f[0]), range(f[1])):
+    #             for min_size in min_sizes:
+    #                 s_kx = min_size / image_size[1]
+    #                 s_ky = min_size / image_size[0]
+    #                 dense_cx = [x * steps[k] / image_size[1] for x in [j + 0.5]]
+    #                 dense_cy = [y * steps[k] / image_size[0] for y in [i + 0.5]]
+    #                 for cy, cx in product(dense_cy, dense_cx):
+    #                     anchors += [cx, cy, s_kx, s_ky]
 
-        anchors = []
-        for k, f in enumerate(feature_maps):
-            min_sizes = min_sizes_list[k]
-            for i, j in product(range(f[0]), range(f[1])):
-                for min_size in min_sizes:
-                    s_kx = min_size / image_size[1]
-                    s_ky = min_size / image_size[0]
-                    dense_cx = [x * steps[k] / image_size[1] for x in [j + 0.5]]
-                    dense_cy = [y * steps[k] / image_size[0] for y in [i + 0.5]]
-                    for cy, cx in product(dense_cy, dense_cx):
-                        anchors += [cx, cy, s_kx, s_ky]
-
-        # back to torch land
-        output = torch.Tensor(anchors).view(-1, 4)
-        if clip:
-            output.clamp_(max=1, min=0)
-        return output
+    #     # back to torch land
+    #     output = torch.Tensor(anchors).view(-1, 4)
+    #     if clip:
+    #         output.clamp_(max=1, min=0)
+    #     return output
 
     def forward(self,inputs):
         out = self.body(inputs)
@@ -155,14 +152,19 @@ class RetinaFace(nn.Module):
         classifications = torch.cat([self.ClassHead[i](feature) for i, feature in enumerate(features)],dim=1)
         ldm_regressions = torch.cat([self.LandmarkHead[i](feature) for i, feature in enumerate(features)], dim=1)
 
-        if self.calculate_prior_boxes:
-            prior_boxes = self._prior_box((inputs.shape[1], inputs.shape[2]), self.cfg)
-        else:
-            prior_boxes = None
+        # if self.calculate_prior_boxes:
+        #     prior_boxes = self._prior_box((inputs.shape[1], inputs.shape[2]), self.cfg)
+        # else:
+        #     prior_boxes = None
+
+        # if self.phase == 'train':
+        #     output = (bbox_regressions, classifications, ldm_regressions, prior_boxes)
+        # else:
+        #     output = (bbox_regressions, F.softmax(classifications, dim=-1), ldm_regressions, prior_boxes)
 
         if self.phase == 'train':
-            output = (bbox_regressions, classifications, ldm_regressions, prior_boxes)
+            output = (bbox_regressions, classifications, ldm_regressions)
         else:
-            output = (bbox_regressions, F.softmax(classifications, dim=-1), ldm_regressions, prior_boxes)
+            output = (bbox_regressions, F.softmax(classifications, dim=-1), ldm_regressions)
 
         return output
