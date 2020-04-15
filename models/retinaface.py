@@ -331,7 +331,12 @@ class RetinaFaceModified(nn.Module):
         classifications = torch.cat([selected_class_head(feature) for selected_class_head, feature in zip(self.ClassHead, features)],dim=1)
         ldm_regressions = torch.cat([selected_landmark_head(feature) for selected_landmark_head, feature in zip(self.LandmarkHead, features)], dim=1)
         
-        image_size: Tuple[int, int] = cast(Tuple[int, int], self.image_size) if (self.image_size is not None) else (inputs.shape[2], inputs.shape[3])
+        if (self.image_size is None):
+            image_size = (inputs.shape[2], inputs.shape[3])
+        else:
+            image_size = self.image_size
+
+        # image_size: Tuple[int, int] = self.image_size if (self.image_size is not None) else (inputs.shape[2], inputs.shape[3])
 
         if self.calculate_prior_boxes and (self.image_size is None):
             prior_boxes = self._prior_box(torch.tensor(image_size, dtype=torch.float), self.min_sizes_list, self.steps, self.clip)
