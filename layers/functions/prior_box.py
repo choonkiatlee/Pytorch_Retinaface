@@ -33,7 +33,7 @@ class PriorBox(object):
             output.clamp_(max=1, min=0)
         return output
 
-class PriorBoxModified(object):
+class PriorBoxModified(torch.nn.Module):
     def __init__(self, cfg, phase='train'):
         super(PriorBoxModified, self).__init__()
         self.min_sizes = cfg['min_sizes']
