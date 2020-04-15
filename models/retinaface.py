@@ -154,7 +154,7 @@ class RetinaFaceModified(nn.Module):
         phase = 'train', 
         calculate_prior_boxes = False, 
         backbone = None,
-        return_layers:Dict[str, int] = {'stage1': 1, 'stage2': 2, 'stage3': 3},
+        return_layers:Dict[str, int] = {'stage1': '1', 'stage2': '2', 'stage3': '3'},
         in_channel:int = 32,
         out_channel:int = 64,
         min_sizes_list: List[Tuple[int,int]] = [[16, 32], [64, 128], [256, 512]],
@@ -263,8 +263,6 @@ class RetinaFaceModified(nn.Module):
         ldm_regressions = torch.cat([selected_landmark_head(feature) for selected_landmark_head, feature in zip(self.LandmarkHead, features)], dim=1)
 
         if self.calculate_prior_boxes:
-
-            print(inputs.shape[2:4])
 
             prior_boxes = self._prior_box(torch.tensor(inputs.shape[2:4]).float(), self.min_sizes_list, self.steps, self.clip)
         else:
