@@ -272,7 +272,7 @@ class RetinaFaceModified(nn.Module):
 
         # img_size = (img_height, img_width) = img.shape[:2]
         
-        reversed_img_size = reversed(img_size)
+        reversed_img_size = (img_size[1], img_size[0])
 
         # scale = torch.Tensor([img_size[1], img_size[0], img_size[1], img_size[0]])
         scale = torch.tensor(reversed_img_size).float().repeat(2)
