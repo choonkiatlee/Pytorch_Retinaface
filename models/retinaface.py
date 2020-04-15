@@ -353,7 +353,7 @@ class RetinaFaceModified(nn.Module):
         scores = F.softmax(classifications, dim=-1)
         landms = ldm_regressions
 
-        return self._decode(boxes, scores, landms, image_size)
+        return self._decode(boxes, scores, landms, prior_boxes, image_size)
 
 
         return output
