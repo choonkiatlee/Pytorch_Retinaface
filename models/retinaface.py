@@ -157,7 +157,7 @@ class RetinaFaceModified(nn.Module):
         return_layers:Dict[str, int] = {'stage1': '1', 'stage2': '2', 'stage3': '3'},
         in_channel:int = 32,
         out_channel:int = 64,
-        min_sizes_list: List[Tuple[int,int]] = [[16, 32], [64, 128], [256, 512]],
+        min_sizes_list: List[Tuple[int,int]] = [(16, 32), (64, 128), (256, 512)],
         steps:List[int] = [8, 16, 32],
         clip: bool = False,
         ):
