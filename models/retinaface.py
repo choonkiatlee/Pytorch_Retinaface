@@ -212,8 +212,7 @@ class RetinaFaceModified(nn.Module):
 
     # Traceable version of prior_box
     @torch.jit.script
-    @staticmethod
-    def _prior_box(image_size: torch.Tensor, min_sizes_list: List[Tuple[int,int]], steps:List[int] , clip: bool):
+    def _prior_box(self, image_size: torch.Tensor, min_sizes_list: List[Tuple[int,int]], steps:List[int] , clip: bool):
 
         name = "s"
 
