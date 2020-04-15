@@ -329,4 +329,89 @@ def nms(boxes, scores, overlap=0.5, top_k=200):
         idx = idx[IoU.le(overlap)]
     return keep, count
 
+def prior_box(image_size: torch.Tensor, min_sizes_list: List[Tuple[int,int]], steps:List[int] , clip: bool):
+
+    name = "s"
+
+    # feature_maps = [[ceil((image_size[0]/step)), ceil( (image_size[1]/step))] for step in steps]
+    feature_maps = [ torch.ceil(image_size / step) for step in steps]
+
+    anchors = []
+    for k, f in enumerate(feature_maps):
+        min_sizes = min_sizes_list[k]
+
+        X, Y = torch.meshgrid([torch.arange(f[0]), torch.arange(f[1])])
+        img_coords = torch.stack( (X.flatten(), Y.flatten()) , dim = 1)
+
+        for img_coord in img_coords:
+            for min_size in min_sizes:
+
+                # Original Implementation
+                # s_kx = min_size / image_size[1]
+                # s_ky = min_size / image_size[0]
+
+                # dense_cx = (a[1] + 0.5) * steps[k] / image_size[1]
+                # dense_cy = (a[0] + 0.5) * steps[k] / image_size[0]
+
+                # Changed
+                s_ks = torch.flip( min_size / image_size , dims=(-1,)) # so it becomes (s_kx, s_ky)
+                dense_cs = torch.flip( (img_coord + 0.5)*steps[k] / image_size , dims = (-1,))
+
+                anchors += [torch.cat([dense_cs, s_ks])]
+
+    # back to torch land
+    output = torch.cat(anchors).view(-1, 4)
+    if clip:
+        output.clamp_(max=1, min=0)
+    return output
+
+def decode_bbox(
+    loc: torch.Tensor, 
+    conf: torch.Tensor, 
+    landms: torch.Tensor, 
+    prior_boxes: torch.Tensor, 
+    img_size: Tuple[int, int],
+    variances: List[float],
+    resize: int = 1,
+    confidence_threshold: float = 0.02,
+    nms_threshold: float = 0.4,
+    top_k: int = 5000,
+    keep_top_k: int = 750,
+    ):
+
+    reversed_img_size = (img_size[1], img_size[0])
+
+    scale_bbox = torch.tensor(reversed_img_size).float().repeat(2)
+    scale_lm = torch.tensor(reversed_img_size).float().repeat(5)
+
+    boxes = decode(loc.data.squeeze(0), prior_boxes, variances)
+    boxes = boxes * scale_bbox / resize
+
+    scores = conf.squeeze(0)[:,1]
+    landms = decode_landm(landms.data.squeeze(0), prior_boxes, variances)
+    landms = landms * scale_lm / resize
+
+    inds = torch.where(scores > confidence_threshold)[0]
+    boxes = boxes[inds]
+    landms = landms[inds]
+    scores = scores[inds]
+
+    # keep top-K before NMS
+    order = torch.flip(scores.argsort(), dims=(-1,))[:top_k] # top_k = 5000
+    boxes = boxes[order]
+    landms = landms[order]
+    scores = scores[order]
+
+    # do NMS
+    keep = torchvision.ops.nms(boxes, scores, nms_threshold)
+
+    boxes = boxes[keep]
+    scores = scores[keep]
+    landms = landms[keep]
+
+    boxes = boxes[:keep_top_k]   # keep_top_k = 750
+    scores = scores[:keep_top_k]  # keep_top_k = 750
+    landms = landms[:keep_top_k] # keep_top_k = 750
+
+    return boxes, scores, landms
 
