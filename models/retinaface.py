@@ -125,6 +125,9 @@ class RetinaFace(nn.Module):
         for k, f in enumerate(feature_maps):
             min_sizes = min_sizes[k]
             for i, j in product(range(f[0]), range(f[1])):
+
+                print(min_sizes)
+
                 for min_size in min_sizes:
                     s_kx = min_size / image_size[1]
                     s_ky = min_size / image_size[0]
