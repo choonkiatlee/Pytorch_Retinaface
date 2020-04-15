@@ -263,6 +263,9 @@ class RetinaFaceModified(nn.Module):
         ldm_regressions = torch.cat([selected_landmark_head(feature) for selected_landmark_head, feature in zip(self.LandmarkHead, features)], dim=1)
 
         if self.calculate_prior_boxes:
+
+            print(inputs.shape[1:3])
+
             prior_boxes = self._prior_box(torch.tensor(inputs.shape[1:3]).float(), self.min_sizes_list, self.steps, self.clip)
         else:
             prior_boxes = None
