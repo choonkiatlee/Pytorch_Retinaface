@@ -216,7 +216,9 @@ class RetinaFaceModified(nn.Module):
 
         name = "s"
 
-        feature_maps = [[ceil((image_size[0]/step)), ceil( (image_size[1]/step))] for step in steps]
+        # feature_maps = [[ceil((image_size[0]/step)), ceil( (image_size[1]/step))] for step in steps]
+        feature_maps = [ ceil(image_size / step) for step in steps]
+
         anchors = []
         for k, f in enumerate(feature_maps):
             min_sizes = min_sizes_list[k]
