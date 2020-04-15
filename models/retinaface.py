@@ -9,6 +9,9 @@ from models.net import MobileNetV1 as MobileNetV1
 from models.net import FPN as FPN
 from models.net import SSH as SSH
 
+from math import ceil
+from itertools import product as product
+
 
 
 class ClassHead(nn.Module):
@@ -45,8 +48,10 @@ class LandmarkHead(nn.Module):
 
         return out.view(out.shape[0], -1, 10)
 
+
+
 class RetinaFace(nn.Module):
-    def __init__(self, cfg = None, phase = 'train'):
+    def __init__(self, cfg = None, phase = 'train', calculate_prior_boxes = False):
         """
         :param cfg:  Network related settings.
         :param phase: train or test.
@@ -68,6 +73,9 @@ class RetinaFace(nn.Module):
         elif cfg['name'] == 'Resnet50':
             import torchvision.models as models
             backbone = models.resnet50(pretrained=cfg['pretrain'])
+
+        self.cfg = cfg
+        self.calculate_prior_boxes = calculate_prior_boxes
 
         self.body = _utils.IntermediateLayerGetter(backbone, cfg['return_layers'])
         in_channels_stage2 = cfg['in_channel']
@@ -104,6 +112,33 @@ class RetinaFace(nn.Module):
             landmarkhead.append(LandmarkHead(inchannels,anchor_num))
         return landmarkhead
 
+    def _prior_box(self, image_size, cfg):
+
+        min_sizes = cfg['min_sizes']
+        steps = cfg['steps']
+        clip = cfg['clip']
+        name = "s"
+
+        feature_maps = [[ceil(image_size[0]/step), ceil(image_size[1]/step)] for step in steps]
+
+        anchors = []
+        for k, f in enumerate(feature_maps):
+            min_sizes = min_sizes[k]
+            for i, j in product(range(f[0]), range(f[1])):
+                for min_size in min_sizes:
+                    s_kx = min_size / image_size[1]
+                    s_ky = min_size / image_size[0]
+                    dense_cx = [x * steps[k] / image_size[1] for x in [j + 0.5]]
+                    dense_cy = [y * steps[k] / image_size[0] for y in [i + 0.5]]
+                    for cy, cx in product(dense_cy, dense_cx):
+                        anchors += [cx, cy, s_kx, s_ky]
+
+        # back to torch land
+        output = torch.Tensor(anchors).view(-1, 4)
+        if clip:
+            output.clamp_(max=1, min=0)
+        return output
+
     def forward(self,inputs):
         out = self.body(inputs)
 
@@ -119,6 +154,9 @@ class RetinaFace(nn.Module):
         bbox_regressions = torch.cat([self.BboxHead[i](feature) for i, feature in enumerate(features)], dim=1)
         classifications = torch.cat([self.ClassHead[i](feature) for i, feature in enumerate(features)],dim=1)
         ldm_regressions = torch.cat([self.LandmarkHead[i](feature) for i, feature in enumerate(features)], dim=1)
+
+        if self.calculate_prior_boxes:
+            prior_boxes = self._prior_box((inputs.shape[1], inputs.shape[2]), self.cfg)
 
         if self.phase == 'train':
             output = (bbox_regressions, classifications, ldm_regressions)

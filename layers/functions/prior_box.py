@@ -62,3 +62,5 @@ class PriorBoxModified(torch.nn.Module):
         if self.clip:
             output.clamp_(max=1, min=0)
         return output
+
+
