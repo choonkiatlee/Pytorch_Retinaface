@@ -268,7 +268,7 @@ class RetinaFaceModified(nn.Module):
             print(torch.tensor(inputs.shape[2:4]).float())
             prior_boxes = self._prior_box(torch.tensor(inputs.shape[2:4]).float(), self.min_sizes_list, self.steps, self.clip)
         else:
-            prior_boxes = torch.tensor([])
+            prior_boxes = torch.tensor(False)
 
         if self.phase == 'train':
             output = (bbox_regressions, classifications, ldm_regressions, prior_boxes)
