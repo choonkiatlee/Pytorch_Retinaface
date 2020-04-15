@@ -212,7 +212,7 @@ class RetinaFaceModified(nn.Module):
 
     # Traceable version of prior_box
     # @torch.jit.script
-    def _prior_box(self, image_size: torch.Tensor, min_sizes_list: List[Tuple[int,int]], steps:List[int] , clip: bool):
+    def _prior_box(image_size: torch.Tensor, min_sizes_list: List[Tuple[int,int]], steps:List[int] , clip: bool):
 
         name = "s"
 
@@ -265,12 +265,10 @@ class RetinaFaceModified(nn.Module):
         ldm_regressions = torch.cat([selected_landmark_head(feature) for selected_landmark_head, feature in zip(self.LandmarkHead, features)], dim=1)
 
         if self.calculate_prior_boxes:
-
             print(torch.tensor(inputs.shape[2:4]).float())
-
             prior_boxes = self._prior_box(torch.tensor(inputs.shape[2:4]).float(), self.min_sizes_list, self.steps, self.clip)
         else:
-            prior_boxes = None
+            prior_boxes = torch.tensor()
 
         if self.phase == 'train':
             output = (bbox_regressions, classifications, ldm_regressions, prior_boxes)
