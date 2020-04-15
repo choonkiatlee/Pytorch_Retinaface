@@ -208,7 +208,7 @@ def encode_landm(matched, priors, variances):
 
 
 # Adapted from https://github.com/Hakuyume/chainer-ssd
-def decode(loc: torch.Tensor, priors: torch.Tensor, variances: Tuple[float]):
+def decode(loc: torch.Tensor, priors: torch.Tensor, variances: Tuple[float,...]):
     """Decode locations from predictions using priors to undo
     the encoding we did for offset regression at train time.
     Args:
@@ -228,7 +228,7 @@ def decode(loc: torch.Tensor, priors: torch.Tensor, variances: Tuple[float]):
     boxes[:, 2:] += boxes[:, :2]
     return boxes
 
-def decode_landm(pre: torch.Tensor, priors: torch.Tensor, variances: Tuple[float]):
+def decode_landm(pre: torch.Tensor, priors: torch.Tensor, variances: Tuple[float,...]):
     """Decode landm from predictions using priors to undo
     the encoding we did for offset regression at train time.
     Args:
