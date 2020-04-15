@@ -292,7 +292,7 @@ class RetinaFaceModified(nn.Module):
         scores = scores[inds]
 
         # keep top-K before NMS
-        order = torch.flip(scores.argsort(), dims=(-1,))[:top_k]
+        order = torch.flip(scores.argsort(), dims=(-1,))[:5000] # top_k = 5000
         # order = scores.argsort()[::-1][:top_k]
         boxes = boxes[order]
         landms = landms[order]
@@ -305,9 +305,9 @@ class RetinaFaceModified(nn.Module):
         scores = scores[keep]
         landms = landms[keep]
 
-        boxes = boxes[:5000]
-        scores = boxes[:5000]
-        landms = landms[:5000]
+        boxes = boxes[:750]   # keep_top_k = 750
+        scores = boxes[:750]  # keep_top_k = 750
+        landms = landms[:750] # keep_top_k = 750
 
         return boxes, scores, landms
 
