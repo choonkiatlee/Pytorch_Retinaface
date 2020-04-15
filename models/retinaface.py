@@ -159,7 +159,8 @@ class RetinaFace(nn.Module):
             prior_boxes = self._prior_box((inputs.shape[1], inputs.shape[2]), self.cfg)
 
         if self.phase == 'train':
-            output = (bbox_regressions, classifications, ldm_regressions)
+            output = (bbox_regressions, classifications, ldm_regressions, prior_boxes)
         else:
-            output = (bbox_regressions, F.softmax(classifications, dim=-1), ldm_regressions)
+            output = (bbox_regressions, F.softmax(classifications, dim=-1), ldm_regressions, prior_boxes)
+
         return output
