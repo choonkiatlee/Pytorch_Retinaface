@@ -155,8 +155,11 @@ class RetinaFaceModified(nn.Module):
     def __init__(self, 
         # cfg = None, 
         phase = 'train', 
-        calculate_prior_boxes = False, 
+        decode_boxes: bool = False, 
+
         backbone = None,
+
+        # Network Configuration
         return_layers:Dict[str, int] = {'stage1': '1', 'stage2': '2', 'stage3': '3'},
         in_channel:int = 32,
         out_channel:int = 64,
@@ -165,6 +168,7 @@ class RetinaFaceModified(nn.Module):
         clip: bool = False,
         image_size: Optional[Tuple[int, int]] = None,
 
+        # Decoding Configuration
         variances: List[float] = [0.1, 0.2],
         resize: int = 1,
         confidence_threshold: float = 0.02,
@@ -179,7 +183,7 @@ class RetinaFaceModified(nn.Module):
 
         # self.cfg = cfg
         # Set config
-        self.calculate_prior_boxes = calculate_prior_boxes
+        self.decode_boxes = decode_boxes
         self.min_sizes_list = min_sizes_list
         self.steps = steps
         self.clip = clip
@@ -334,27 +338,31 @@ class RetinaFaceModified(nn.Module):
 
         # image_size: Tuple[int, int] = self.image_size if (self.image_size is not None) else (inputs.shape[2], inputs.shape[3])
 
-        if self.prior_boxes is None:
-            prior_boxes = self._prior_box(torch.tensor(image_size, dtype=torch.float), self.min_sizes_list, self.steps, self.clip)
-        else:
-            prior_boxes = self.prior_boxes
-
-        if self.phase == 'train':
-            output = (bbox_regressions, classifications, ldm_regressions, prior_boxes)
-        else:
-            output = (bbox_regressions, F.softmax(classifications, dim=-1), ldm_regressions, prior_boxes)
-
         # if self.phase == 'train':
         #     output = (bbox_regressions, classifications, ldm_regressions)
         # else:
         #     output = (bbox_regressions, F.softmax(classifications, dim=-1), ldm_regressions)
 
-
         boxes = bbox_regressions
         scores = F.softmax(classifications, dim=-1)
         landms = ldm_regressions
 
-        return self._decode(boxes, scores, landms, prior_boxes, image_size)
+        if self.decode_boxes:
+            if self.prior_boxes is None:
+                prior_boxes = self._prior_box(torch.tensor(image_size, dtype=torch.float), self.min_sizes_list, self.steps, self.clip)
+            else:
+                prior_boxes = self.prior_boxes
+
+            output = self._decode(boxes, scores, landms, prior_boxes, image_size)
+
+        else:
+            
+            if self.phase == 'train':
+                output = (bbox_regressions, classifications, ldm_regressions)
+            else:
+                output = (bbox_regressions, F.softmax(classifications, dim=-1), ldm_regressions)
+
+        return output
 
 
         # return output
