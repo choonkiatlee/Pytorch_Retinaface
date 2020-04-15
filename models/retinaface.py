@@ -156,7 +156,7 @@ def decode_bbox(
     landms: torch.Tensor, 
     prior_boxes: torch.Tensor, 
     img_size: Tuple[int, int],
-    variances: Tuple[float] = (0.1, 0.2),
+    variances: List[float],
     resize: int = 1,
     confidence_threshold: float = 0.02,
     nms_threshold: float = 0.4,
