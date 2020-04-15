@@ -310,7 +310,7 @@ class RetinaFaceModified(nn.Module):
         landms = landms[keep]
 
         boxes = boxes[:750]   # keep_top_k = 750
-        scores = boxes[:750]  # keep_top_k = 750
+        scores = scores[:750]  # keep_top_k = 750
         landms = landms[:750] # keep_top_k = 750
 
         return boxes, scores, landms
@@ -336,13 +336,6 @@ class RetinaFaceModified(nn.Module):
         else:
             image_size = self.image_size
 
-        # image_size: Tuple[int, int] = self.image_size if (self.image_size is not None) else (inputs.shape[2], inputs.shape[3])
-
-        # if self.phase == 'train':
-        #     output = (bbox_regressions, classifications, ldm_regressions)
-        # else:
-        #     output = (bbox_regressions, F.softmax(classifications, dim=-1), ldm_regressions)
-
         boxes = bbox_regressions
         scores = F.softmax(classifications, dim=-1)
         landms = ldm_regressions
@@ -360,7 +353,7 @@ class RetinaFaceModified(nn.Module):
             if self.phase == 'train':
                 output = (bbox_regressions, classifications, ldm_regressions)
             else:
-                output = (bbox_regressions, F.softmax(classifications, dim=-1), ldm_regressions)
+                output = (boxes, scores, landms)
 
         return output
 
