@@ -114,7 +114,7 @@ class RetinaFace(nn.Module):
 
     def _prior_box(self, image_size, cfg):
 
-        min_sizes = cfg['min_sizes']
+        min_sizes_list = cfg['min_sizes']
         steps = cfg['steps']
         clip = cfg['clip']
         name = "s"
@@ -123,11 +123,8 @@ class RetinaFace(nn.Module):
 
         anchors = []
         for k, f in enumerate(feature_maps):
-            min_sizes = min_sizes[k]
+            min_sizes = min_sizes_list[k]
             for i, j in product(range(f[0]), range(f[1])):
-
-                print(min_sizes)
-
                 for min_size in min_sizes:
                     s_kx = min_size / image_size[1]
                     s_ky = min_size / image_size[0]
