@@ -207,7 +207,7 @@ class RetinaFaceModified(nn.Module):
         #     import torchvision.models as models
         #     backbone = models.resnet50(pretrained=cfg['pretrain'])
 
-        self.cfg = cfg
+        # self.cfg = cfg
         self.calculate_prior_boxes = calculate_prior_boxes
 
         self.body = _utils.IntermediateLayerGetter(backbone, return_layers)
