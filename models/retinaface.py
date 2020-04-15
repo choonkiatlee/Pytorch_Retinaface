@@ -157,6 +157,8 @@ class RetinaFace(nn.Module):
 
         if self.calculate_prior_boxes:
             prior_boxes = self._prior_box((inputs.shape[1], inputs.shape[2]), self.cfg)
+        else:
+            prior_boxes = None
 
         if self.phase == 'train':
             output = (bbox_regressions, classifications, ldm_regressions, prior_boxes)
