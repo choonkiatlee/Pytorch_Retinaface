@@ -151,7 +151,6 @@ class RetinaFace(nn.Module):
         return output
 
 def decode_bbox(
-    self, 
     loc: torch.Tensor, 
     conf: torch.Tensor, 
     landms: torch.Tensor, 
