@@ -268,7 +268,7 @@ class RetinaFaceModified(nn.Module):
             output.clamp_(max=1, min=0)
         return output
 
-    def _decode(self, loc, conf, landms, priors, img_size: Tuple[int, int]):
+    def _decode(self, loc, conf, landms, prior_boxes, img_size: Tuple[int, int]):
 
         # img_size = (img_height, img_width) = img.shape[:2]
         
