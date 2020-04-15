@@ -97,19 +97,19 @@ class RetinaFace(nn.Module):
         self.BboxHead = self._make_bbox_head(fpn_num=3, inchannels=cfg['out_channel'])
         self.LandmarkHead = self._make_landmark_head(fpn_num=3, inchannels=cfg['out_channel'])
 
-    def _make_class_head(self,fpn_num=3,inchannels=64,anchor_num=2):
+    def _make_class_head(self,fpn_num=3,inchannels=64,anchor_num=2) -> nn.ModuleList:
         classhead = nn.ModuleList()
         for i in range(fpn_num):
             classhead.append(ClassHead(inchannels,anchor_num))
         return classhead
     
-    def _make_bbox_head(self,fpn_num=3,inchannels=64,anchor_num=2):
+    def _make_bbox_head(self,fpn_num=3,inchannels=64,anchor_num=2) -> nn.ModuleList:
         bboxhead = nn.ModuleList()
         for i in range(fpn_num):
             bboxhead.append(BboxHead(inchannels,anchor_num))
         return bboxhead
 
-    def _make_landmark_head(self,fpn_num=3,inchannels=64,anchor_num=2):
+    def _make_landmark_head(self,fpn_num=3,inchannels=64,anchor_num=2) -> nn.ModuleList:
         landmarkhead = nn.ModuleList()
         for i in range(fpn_num):
             landmarkhead.append(LandmarkHead(inchannels,anchor_num))
