@@ -357,4 +357,4 @@ class RetinaFaceModified(nn.Module):
         return self._decode(boxes, scores, landms, prior_boxes, image_size)
 
 
-        return output
+        # return output
