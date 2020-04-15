@@ -6,6 +6,8 @@ import torchvision.models as models
 import torch.nn.functional as F
 from torch.autograd import Variable
 
+from typing import *
+
 def conv_bn(inp, oup, stride = 1, leaky = 0):
     return nn.Sequential(
         nn.Conv2d(inp, oup, 3, stride, 1, bias=False),
@@ -71,6 +73,7 @@ class FPN(nn.Module):
         leaky = 0
         if (out_channels <= 64):
             leaky = 0.1
+
         self.output1 = conv_bn1X1(in_channels_list[0], out_channels, stride = 1, leaky = leaky)
         self.output2 = conv_bn1X1(in_channels_list[1], out_channels, stride = 1, leaky = leaky)
         self.output3 = conv_bn1X1(in_channels_list[2], out_channels, stride = 1, leaky = leaky)
@@ -78,7 +81,7 @@ class FPN(nn.Module):
         self.merge1 = conv_bn(out_channels, out_channels, leaky = leaky)
         self.merge2 = conv_bn(out_channels, out_channels, leaky = leaky)
 
-    def forward(self, input):
+    def forward(self, input:Dict[str, torch.Tensor]):
         # names = list(input.keys())
         input = list(input.values())
 
