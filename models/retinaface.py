@@ -239,8 +239,7 @@ class RetinaFaceModified(nn.Module):
         feature1 = self.ssh1(fpn[0])
         feature2 = self.ssh2(fpn[1])
         feature3 = self.ssh3(fpn[2])
-        features = nn.ModuleList([feature1, feature2, feature3])
-
+        features = (feature1, feature2, feature3)
 
         bbox_regressions = torch.cat([selected_bbox_head(feature) for selected_bbox_head, feature in zip(self.BboxHead, features)], dim=1)
         classifications = torch.cat([selected_class_head(feature) for selected_class_head, feature in zip(self.ClassHead, features)],dim=1)
