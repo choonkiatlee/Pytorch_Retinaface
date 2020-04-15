@@ -160,6 +160,7 @@ class RetinaFaceModified(nn.Module):
         min_sizes_list: List[Tuple[int,int]] = [(16, 32), (64, 128), (256, 512)],
         steps:List[int] = [8, 16, 32],
         clip: bool = False,
+        image_size: Optional[Tuple[int, int]] = None
         ):
         """
         :param cfg:  Network related settings.
@@ -174,6 +175,12 @@ class RetinaFaceModified(nn.Module):
         self.min_sizes_list = min_sizes_list
         self.steps = steps
         self.clip = clip
+        self.image_size = image_size
+
+        if self.image_size is not None:
+            self.prior_boxes = self._prior_box(torch.tensor(self.image_size).float(), self.min_sizes_list, self.steps, self.clip)
+        else:
+            self.prior_boxes = None
 
         self.body = _utils.IntermediateLayerGetter(backbone, return_layers)
         in_channels_stage2 = in_channel
@@ -264,10 +271,10 @@ class RetinaFaceModified(nn.Module):
         classifications = torch.cat([selected_class_head(feature) for selected_class_head, feature in zip(self.ClassHead, features)],dim=1)
         ldm_regressions = torch.cat([selected_landmark_head(feature) for selected_landmark_head, feature in zip(self.LandmarkHead, features)], dim=1)
 
-        if self.calculate_prior_boxes:
+        if self.calculate_prior_boxes and (self.image_size is None):
             prior_boxes = self._prior_box(torch.tensor(inputs.shape[2:4]).float(), self.min_sizes_list, self.steps, self.clip)
         else:
-            prior_boxes = torch.tensor(False)
+            prior_boxes = self.prior_boxes
 
         if self.phase == 'train':
             output = (bbox_regressions, classifications, ldm_regressions, prior_boxes)
