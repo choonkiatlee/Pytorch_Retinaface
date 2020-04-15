@@ -264,9 +264,9 @@ class RetinaFaceModified(nn.Module):
 
         if self.calculate_prior_boxes:
 
-            print(inputs.shape[1:3])
+            print(inputs.shape[2:4])
 
-            prior_boxes = self._prior_box(torch.tensor(inputs.shape[1:3]).float(), self.min_sizes_list, self.steps, self.clip)
+            prior_boxes = self._prior_box(torch.tensor(inputs.shape[2:4]).float(), self.min_sizes_list, self.steps, self.clip)
         else:
             prior_boxes = None
 
