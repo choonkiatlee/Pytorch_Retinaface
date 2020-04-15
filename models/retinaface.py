@@ -157,6 +157,9 @@ class RetinaFaceModified(nn.Module):
         return_layers:Dict[str, int] = {'stage1': 1, 'stage2': 2, 'stage3': 3},
         in_channel:int = 32,
         out_channel:int = 64,
+        min_sizes_list: List[Tuple[int,int]] = [[16, 32], [64, 128], [256, 512]],
+        steps:List[int] = [8, 16, 32],
+        clip: bool = False,
         ):
         """
         :param cfg:  Network related settings.
@@ -166,7 +169,11 @@ class RetinaFaceModified(nn.Module):
         self.phase = phase
 
         # self.cfg = cfg
+        # Set config
         self.calculate_prior_boxes = calculate_prior_boxes
+        self.min_sizes_list = min_sizes_list
+        self.steps = steps
+        self.clip = clip
 
         self.body = _utils.IntermediateLayerGetter(backbone, return_layers)
         in_channels_stage2 = in_channel
@@ -203,31 +210,41 @@ class RetinaFaceModified(nn.Module):
             landmarkhead.append(LandmarkHead(inchannels,anchor_num))
         return landmarkhead
 
-    # def _prior_box(self, image_size, cfg):
+    # Traceable version of prior_box
+    @staticmethod
+    def _prior_box(image_size: torch.Tensor, min_sizes_list: List[Tuple[int,int]], steps:List[int] , clip: bool):
 
-    #     min_sizes_list = cfg['min_sizes']
-    #     steps = cfg['steps']
-    #     clip = cfg['clip']
-    #     name = "s"
+        name = "s"
 
-    #     feature_maps = [[ceil(image_size[0]/step), ceil(image_size[1]/step)] for step in steps]
-    #     anchors = []
-    #     for k, f in enumerate(feature_maps):
-    #         min_sizes = min_sizes_list[k]
-    #         for i, j in product(range(f[0]), range(f[1])):
-    #             for min_size in min_sizes:
-    #                 s_kx = min_size / image_size[1]
-    #                 s_ky = min_size / image_size[0]
-    #                 dense_cx = [x * steps[k] / image_size[1] for x in [j + 0.5]]
-    #                 dense_cy = [y * steps[k] / image_size[0] for y in [i + 0.5]]
-    #                 for cy, cx in product(dense_cy, dense_cx):
-    #                     anchors += [cx, cy, s_kx, s_ky]
+        feature_maps = [[ceil((image_size[0]/step)), ceil( (image_size[1]/step))] for step in steps]
+        anchors = []
+        for k, f in enumerate(feature_maps):
+            min_sizes = min_sizes_list[k]
 
-    #     # back to torch land
-    #     output = torch.Tensor(anchors).view(-1, 4)
-    #     if clip:
-    #         output.clamp_(max=1, min=0)
-    #     return output
+            X, Y = torch.meshgrid([torch.arange(f[0]), torch.arange(f[1])])
+            img_coords = torch.stack( (X.flatten(), Y.flatten()) , dim = 1)
+
+            for img_coord in img_coords:
+                for min_size in min_sizes:
+
+                    # Original Implementation
+                    # s_kx = min_size / image_size[1]
+                    # s_ky = min_size / image_size[0]
+
+                    # dense_cx = (a[1] + 0.5) * steps[k] / image_size[1]
+                    # dense_cy = (a[0] + 0.5) * steps[k] / image_size[0]
+
+                    # Changed
+                    s_ks = torch.flip( min_size / image_size , dims=(-1,)) # so it becomes (s_kx, s_ky)
+                    dense_cs = torch.flip( (img_coord + 0.5)*steps[k] / image_size , dims = (-1,))
+
+                    anchors += [torch.cat([dense_cs, s_ks])]
+
+        # back to torch land
+        output = torch.cat(anchors).view(-1, 4)
+        if clip:
+            output.clamp_(max=1, min=0)
+        return output
 
     def forward(self,inputs):
         out = self.body(inputs)
@@ -245,19 +262,19 @@ class RetinaFaceModified(nn.Module):
         classifications = torch.cat([selected_class_head(feature) for selected_class_head, feature in zip(self.ClassHead, features)],dim=1)
         ldm_regressions = torch.cat([selected_landmark_head(feature) for selected_landmark_head, feature in zip(self.LandmarkHead, features)], dim=1)
 
-        # if self.calculate_prior_boxes:
-        #     prior_boxes = self._prior_box((inputs.shape[1], inputs.shape[2]), self.cfg)
-        # else:
-        #     prior_boxes = None
-
-        # if self.phase == 'train':
-        #     output = (bbox_regressions, classifications, ldm_regressions, prior_boxes)
-        # else:
-        #     output = (bbox_regressions, F.softmax(classifications, dim=-1), ldm_regressions, prior_boxes)
+        if self.calculate_prior_boxes:
+            prior_boxes = self._prior_box(inputs.shape[1:3], self.min_sizes_list, self.steps, self.clip)
+        else:
+            prior_boxes = None
 
         if self.phase == 'train':
-            output = (bbox_regressions, classifications, ldm_regressions)
+            output = (bbox_regressions, classifications, ldm_regressions, prior_boxes)
         else:
-            output = (bbox_regressions, F.softmax(classifications, dim=-1), ldm_regressions)
+            output = (bbox_regressions, F.softmax(classifications, dim=-1), ldm_regressions, prior_boxes)
+
+        # if self.phase == 'train':
+        #     output = (bbox_regressions, classifications, ldm_regressions)
+        # else:
+        #     output = (bbox_regressions, F.softmax(classifications, dim=-1), ldm_regressions)
 
         return output
