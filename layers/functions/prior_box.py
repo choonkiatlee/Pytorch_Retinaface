@@ -35,7 +35,7 @@ class PriorBox(object):
 
 class PriorBoxModified(object):
     def __init__(self, cfg, phase='train'):
-        super(PriorBox, self).__init__()
+        super(PriorBoxModified, self).__init__()
         self.min_sizes = cfg['min_sizes']
         self.steps = cfg['steps']
         self.clip = cfg['clip']
