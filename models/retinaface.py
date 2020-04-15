@@ -195,7 +195,7 @@ class RetinaFaceModified(nn.Module):
         self.nms_threshold = nms_threshold
 
         if self.image_size is not None:
-            self.prior_boxes = self._prior_box(torch.tensor(self.image_size).float(), self.min_sizes_list, self.steps, self.clip)
+            self.prior_boxes = prior_box(torch.tensor(self.image_size).float(), self.min_sizes_list, self.steps, self.clip)
         else:
             self.prior_boxes = None
 
